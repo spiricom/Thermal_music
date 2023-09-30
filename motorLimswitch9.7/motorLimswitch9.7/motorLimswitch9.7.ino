@@ -3,7 +3,7 @@
 // thie millisDelay library is available from https://www.forward.com.au/pfod/ArduinoProgramming/TimingDelaysInArduino.html
 #include <millisDelay.h>
 // the SpeedStepper library is available from https://www.forward.com.au/pfod/Robots/SpeedStepper/index.html
-#include <SpeedStepper.h>
+#include "SpeedStepper.h"
 #include <limits.h>  // for max,min values
 #include <pfodBufferedStream.h>
 
@@ -29,7 +29,7 @@
 
 // ========== SETTINS FOR MOTOR STUFF ========
 #define LIM_SWITCH_TOP_PIN1 5
-#define LIM_SWITCH_TOP_PIN2 6
+#define LIM_SWITCH_TOP_PIN2 9
 #define LIM_SWITCH_BOT_PIN1 7
 #define LIM_SWITCH_BOT_PIN2 8
 
@@ -38,6 +38,8 @@
 #define SPEED_POT A0
 #define DIST_POT A1
 
+int32_t calibratedRange1 = 0;
+int32_t calibratedRange2 = 0;
 int32_t scaledPlusLimit = 0;
 int32_t scaledPlusLimit2 = 0;
 int32_t midiScaledPlusLimit = 0;
@@ -53,18 +55,24 @@ const int DIR_PIN2 = 4;
 SpeedStepper stepperTop(STEP_PIN, DIR_PIN);
 SpeedStepper stepperBot(STEP_PIN2, DIR_PIN2);
 
+
+int32_t toppluslimit = 0;
+int32_t topminuslimit = 0;
+int32_t bottompluslimit = 0;
+int32_t bottomminuslimit = 0;
+
 int distVal1 = 0;
 int distVal2 = 0;
-
+int initSpeed = 200;
 float speedVal = 50.f;
 //const int limit_switches[4] = {/*topMotorlim1, bottomMotorlim1, topMotorlim2,  bottomMotorlim2*/0,1,2,0};
 void setup() {
 
 
-  pinMode(LIM_SWITCH_TOP_PIN1, INPUT_PULLDOWN);
-  pinMode(LIM_SWITCH_TOP_PIN2, INPUT_PULLDOWN);
-  pinMode(LIM_SWITCH_BOT_PIN1, INPUT_PULLDOWN);
-  pinMode(LIM_SWITCH_BOT_PIN2, INPUT_PULLDOWN);
+  pinMode(LIM_SWITCH_TOP_PIN1, INPUT_PULLUP);
+  pinMode(LIM_SWITCH_TOP_PIN2, INPUT_PULLUP);
+  pinMode(LIM_SWITCH_BOT_PIN1, INPUT_PULLUP);
+  pinMode(LIM_SWITCH_BOT_PIN2, INPUT_PULLUP);
   pinMode(13, OUTPUT);
   delay(10);
   pinMode(OPEN_BUTTON, INPUT_PULLUP);
@@ -79,21 +87,28 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(CLOSE_BUTTON), closePressed, FALLING);
   digitalWrite(13, HIGH);
   bool findLimit = 0;
-  stepperTop.setAcceleration(50000);
-  stepperBot.setAcceleration(50000);
-  stepperTop.setSpeed(50);
-  stepperBot.setSpeed(-50);
+  stepperTop.setAcceleration(500000);
+  stepperBot.setAcceleration(500000);
+  //stepperTop.setAcceleration(10);
+  //stepperBot.setAcceleration(10);
+  stepperTop.setSpeed(-initSpeed);
+  stepperBot.setSpeed(-initSpeed);
 
+    
   while (findLimit == 0)
   {
-    stepperTop.run();  
-    if (digitalRead(LIM_SWITCH_TOP_PIN1) == 1)
+    stepperTop.run();
+    //stepperBot.run();
+    //Serial.println(findLimit);
+    int buttonPressed = digitalRead(LIM_SWITCH_TOP_PIN2);
+    //Serial.println(buttonPressed);
+    if (buttonPressed == 0)
     {
-      Serial.println("lim switch top close");
-      stepperTop.setPlusLimit(stepperTop.getCurrentPosition());
-      Serial.println(stepperTop.getPlusLimit());
-      scaledPlusLimit = stepperTop.getCurrentPosition() * 1024;
-      midiScaledPlusLimit = stepperTop.getCurrentPosition() * 127;
+      stepperTop.stopAndSetHome();
+      stepperTop.setMinusLimit(stepperTop.getCurrentPosition());
+      
+       Serial.println("top open limit");
+      //stepperTop.stopAndSetHome();
       findLimit++;
     }
   }
@@ -102,7 +117,7 @@ void setup() {
   {
     //stepperTop.run();
     stepperBot.run();
-  if (digitalRead(LIM_SWITCH_BOT_PIN1) == 1)
+    if (digitalRead(LIM_SWITCH_BOT_PIN1) == 0)
     {
       stepperBot.stopAndSetHome();
       stepperBot.setMinusLimit(stepperBot.getCurrentPosition());
@@ -113,47 +128,60 @@ void setup() {
   }
   //stepperTop.goHome();
   Serial.println("MOVIN ON");
-  stepperTop.setSpeed(-50);
-  stepperBot.setSpeed(50);
+  stepperTop.setSpeed(initSpeed);
+  stepperBot.setSpeed(initSpeed);
   
   findLimit = 0;
   while (findLimit ==0)
   {
-    stepperTop.run();
-    //stepperBot.run();
-    //Serial.println("TESTING");
-    if (digitalRead(LIM_SWITCH_TOP_PIN2) == 1)
+    stepperTop.run();  
+    if (digitalRead(LIM_SWITCH_TOP_PIN1) == 0)
     {
-      stepperTop.stopAndSetHome();
-      stepperTop.setMinusLimit(stepperTop.getCurrentPosition());
-      
-       Serial.println("top open limit");
-      //stepperTop.stopAndSetHome();
+      Serial.println("lim switch top close");
+      stepperTop.setPlusLimit(stepperTop.getCurrentPosition());
+      Serial.println(stepperTop.getPlusLimit());
+      scaledPlusLimit = stepperTop.getCurrentPosition() * 1024;
+      midiScaledPlusLimit = stepperTop.getCurrentPosition() * 127;
       findLimit++;
-      
- 
     }
-
   }
-    findLimit = 0;
+  
+  findLimit = 0;
   while (findLimit == 0)
   {
     //stepperTop.run();
     stepperBot.run();
-      if (digitalRead(LIM_SWITCH_BOT_PIN2) == 1)
+    if (digitalRead(LIM_SWITCH_BOT_PIN2) == 0)
     {
      Serial.println(stepperBot.getCurrentPosition());
       stepperBot.setPlusLimit(stepperBot.getCurrentPosition());
       Serial.println("bottom open limit");
+      
       scaledPlusLimit2 = stepperBot.getCurrentPosition() * 1024;
       midiScaledPlusLimit2 = stepperBot.getCurrentPosition() * 127;
       findLimit++;
     }
   }
   Serial.println("DONE,BRO");
-  stepperTop.setSpeed(50);
-  stepperBot.setSpeed(-50);
+  calibratedRange1 = stepperTop.getPlusLimit();
+  calibratedRange2 = stepperBot.getPlusLimit();
+
+  toppluslimit = calibratedRange1;
+  topminuslimit = 0;
+  bottompluslimit = calibratedRange2;
+  bottomminuslimit = 0;
+  
+  stepperBot.setSpeed(-initSpeed);
+  //stepperTop.setSpeed(50);
+  //stepperBot.setSpeed(-50);
+  //stepperBot.stop();
+  stepperTop.stop();
   digitalWrite(13, LOW);
+
+  attachInterrupt(digitalPinToInterrupt(LIM_SWITCH_TOP_PIN2), topOpenLimitHit, FALLING);
+  attachInterrupt(digitalPinToInterrupt(LIM_SWITCH_TOP_PIN1), topClosedLimitHit, FALLING);
+  attachInterrupt(digitalPinToInterrupt(LIM_SWITCH_BOT_PIN2), bottomOpenLimitHit, FALLING);
+  attachInterrupt(digitalPinToInterrupt(LIM_SWITCH_BOT_PIN1), bottomClosedLimitHit, FALLING);
 }
 
 
@@ -161,7 +189,7 @@ void setup() {
 void loop() {
   stepperTop.run();
   stepperBot.run();
-  //Serial.println(stepperTop.getCurrentPosition());
+ // Serial.println(digitalRead(LIM_SWITCH_TOP_PIN2));
   //Serial.println(stepperBot.getCurrentPosition());
   usbMIDI.read();
 }
@@ -181,6 +209,7 @@ void openPressed()
     Serial.println("open");
     stepperTop.setSpeed(-_speedVal);
     stepperBot.setSpeed(_speedVal);
+
     //stepperTop.setCurrentPosition(stepperTop.getPlusLimit());
   }
   last_open_interrupt_time = open_interrupt_time;
@@ -208,14 +237,35 @@ void closePressed()
 }
 
 
-void midiOpen()
+void midiOpen(int value)
 {
+  if (value != 0)
+  {
+    int scaledValue = (127.0f - value) * (calibratedRange1 / 127.0f) + topminuslimit;
+    Serial.println(scaledValue);
+    if ((scaledValue >= topminuslimit) && (scaledValue <= toppluslimit))
+    {
+      stepperTop.setMinusLimit(scaledValue);
+      stepperTop.setPlusLimit(toppluslimit);
+    }
+    scaledValue = value * (calibratedRange2 / 127.0f) + bottomminuslimit;
+    if ((scaledValue >= bottomminuslimit) && (scaledValue <= bottompluslimit))
+    {
+      stepperBot.setPlusLimit(scaledValue);
+      stepperBot.setMinusLimit(bottomminuslimit);
+    }
+  }
+  
+  
+  
   stepperTop.setSpeed(-speedVal);
   stepperBot.setSpeed(speedVal);
 }
 
-void midiClose()
+void midiClose(int velocity)
 {
+  stepperTop.setPlusLimit(toppluslimit);
+  stepperBot.setMinusLimit(bottomminuslimit);
   stepperTop.setSpeed(speedVal);
   stepperBot.setSpeed(-speedVal);
 }
@@ -224,11 +274,11 @@ void myNoteOn(byte channel, byte note, byte velocity)
 {
   if (note == 60)
   {
-    midiOpen();
+    midiOpen(velocity);
   }
   else if (note == 61)
   {
-    midiClose();
+    midiClose(velocity);
   }
 }
 
@@ -246,9 +296,176 @@ void OnControlChange(byte channel, byte control, byte value)
   }
   else if (control == 9) //open/close amount(distance)
   {
-    stepperTop.setPlusLimit(midiScaledPlusLimit / value);
-    stepperTop.setMinusLimit(midiScaledPlusLimit / (127 - value) );
-    stepperBot.setPlusLimit(midiScaledPlusLimit / value);
-    stepperBot.setMinusLimit(midiScaledPlusLimit / (127 - value) );
+    int scaledValue = (127.0f - value) * (calibratedRange1 / 127.0f) + topminuslimit;
+
+    if ((scaledValue >= topminuslimit) && (scaledValue <= toppluslimit))
+    {
+      stepperTop.setMinusLimit(scaledValue);
+      stepperTop.setPlusLimit(toppluslimit);
+    }
+    scaledValue = value * (calibratedRange2 / 127.0f) + bottomminuslimit;
+    if ((scaledValue >= bottomminuslimit) && (scaledValue <= bottompluslimit))
+    {
+      stepperBot.setPlusLimit(scaledValue);
+      stepperBot.setMinusLimit(bottomminuslimit);
+    }
+  }
+
+  else if (control  == 10) // top position
+  {
+    
+    int scaledValue = ((127.0f - (float)value) * ((float)calibratedRange1 / 127.0f)) + topminuslimit;
+    Serial.println(scaledValue);
+    Serial.println(stepperTop.getCurrentPosition());
+    if ((scaledValue > stepperTop.getCurrentPosition()) && (scaledValue <= toppluslimit))
+    {
+      stepperTop.setPlusLimit(scaledValue);
+      stepperTop.setSpeed(speedVal);
+      Serial.println("forward");
+
+    }
+    else if ((scaledValue < stepperTop.getCurrentPosition()) && (scaledValue >= topminuslimit))
+    {
+      stepperTop.setMinusLimit(scaledValue);
+      stepperTop.setSpeed(-speedVal);
+      Serial.println("backweard");
+
+    }
+  }
+
+  else if (control  == 11) // bottom position
+  {
+    int scaledValue = ((float)value * ((float)calibratedRange2 / 127.0f))  + bottomminuslimit;
+    Serial.println(scaledValue);
+    Serial.println(stepperBot.getCurrentPosition());
+    if ((scaledValue > stepperBot.getCurrentPosition()) && (scaledValue <= bottompluslimit))
+    {
+      stepperBot.setPlusLimit(scaledValue);
+      stepperBot.setSpeed(speedVal);
+      Serial.println("forward");
+
+    }
+    else if ((scaledValue < stepperBot.getCurrentPosition()) && (scaledValue >= bottomminuslimit))
+    {
+      stepperBot.setMinusLimit(scaledValue);
+      stepperBot.setSpeed(-speedVal);
+      Serial.println("backweard");
+    }
+  }
+
+  else if (control  == 12) // both position
+  {
+    int32_t scaledValue = (127.0f - (float)value) * (((float)calibratedRange1 / 127.0f)) +topminuslimit;
+    Serial.println(calibratedRange1);  
+   Serial.println("topminuslimit"); 
+    Serial.println(topminuslimit);
+    Serial.println("toppluslimit"); 
+    Serial.println(toppluslimit);
+    Serial.println("topscaledvalue");
+    Serial.println(scaledValue);
+    Serial.println(stepperTop.getCurrentPosition());
+    
+    if ((scaledValue > stepperTop.getCurrentPosition()) && (scaledValue <= toppluslimit))
+    {
+      stepperTop.setPlusLimit(scaledValue);
+      stepperTop.setSpeed(speedVal);
+      Serial.println("forward");
+    }
+    else if ((scaledValue < stepperTop.getCurrentPosition()) && (scaledValue >= topminuslimit))
+    {
+      stepperTop.setMinusLimit(scaledValue);
+      stepperTop.setSpeed(-speedVal);
+      Serial.println("backweard");
+    }
+
+    scaledValue = ((float)value * ((float)calibratedRange2 / 127.0f)) + bottomminuslimit;
+    Serial.println("bottomminuslimit");
+    Serial.println(bottomminuslimit);
+        Serial.println("bottompluslimit"); 
+    Serial.println(bottompluslimit);
+    Serial.println("bottomscaledvalue");
+    Serial.println(scaledValue);
+    Serial.println(stepperBot.getCurrentPosition());
+    
+    if ((scaledValue > stepperBot.getCurrentPosition()) && (scaledValue <= bottompluslimit))
+    {
+      stepperBot.setPlusLimit(scaledValue);
+      stepperBot.setSpeed(speedVal);
+      Serial.println("forward");
+
+    }
+    else if ((scaledValue < stepperBot.getCurrentPosition()) && (scaledValue >= bottomminuslimit))
+    {
+      stepperBot.setMinusLimit(scaledValue);
+      stepperBot.setSpeed(-speedVal);
+      Serial.println("backweard");
+
+    }
+  }
+}
+
+void topOpenLimitHit(void)
+{
+  if (stepperTop.getSpeed() < 0)
+  {
+    //stepperTop.stopAndSetHome();
+    Serial.println(stepperTop.getSpeed());
+    stepperTop.hardStop();
+    stepperTop.setMinusLimit(stepperTop.getCurrentPosition());
+    stepperTop.setPlusLimit(stepperTop.getCurrentPosition() + calibratedRange1);
+    Serial.println("limit switch top open");
+    toppluslimit = stepperTop.getPlusLimit();
+    topminuslimit = stepperTop.getMinusLimit();
+  
+    Serial.println();
+    Serial.println();
+  }
+}
+void topClosedLimitHit(void)
+{
+  if (stepperTop.getSpeed() > 0)
+  {
+    Serial.println("lim switch top close");
+    Serial.println(stepperTop.getPlusLimit());
+    stepperTop.hardStop();
+    stepperTop.setPlusLimit(stepperTop.getCurrentPosition());
+    stepperTop.setMinusLimit(stepperTop.getCurrentPosition() - calibratedRange1);
+    //scaledPlusLimit = stepperTop.getCurrentPosition() * 1024;
+    //midiScaledPlusLimit = stepperTop.getCurrentPosition() * 127;
+    toppluslimit = stepperTop.getPlusLimit();
+    topminuslimit = stepperTop.getMinusLimit();
+  }
+}
+void bottomOpenLimitHit(void)
+{
+  //Serial.println(stepperBot.getCurrentPosition());
+  
+  if (stepperBot.getSpeed() > 0)
+  {
+    Serial.println(stepperBot.getPlusLimit());
+    stepperBot.setPlusLimit(stepperBot.getCurrentPosition());
+    stepperBot.setMinusLimit(stepperBot.getCurrentPosition() - calibratedRange2);
+    stepperBot.hardStop();
+    Serial.println("lim switch bottom open");
+    //scaledPlusLimit2 = stepperBot.getCurrentPosition() * 1024;
+    //midiScaledPlusLimit2 = stepperBot.getCurrentPosition() * 127;
+    bottompluslimit = stepperBot.getPlusLimit();
+    bottomminuslimit = stepperBot.getMinusLimit();
+  }
+
+  
+}
+void bottomClosedLimitHit (void)
+{
+  if (stepperBot.getSpeed() < 0)
+  {
+    //stepperBot.stopAndSetHome();
+    stepperBot.hardStop();
+    Serial.println(stepperBot.getSpeed());
+    stepperBot.setMinusLimit(stepperBot.getCurrentPosition());
+    stepperBot.setPlusLimit(stepperBot.getCurrentPosition() + calibratedRange2);
+    Serial.println("lim switch bottom close");
+    bottompluslimit = stepperBot.getPlusLimit();
+    bottomminuslimit = stepperBot.getMinusLimit();
   }
 }
