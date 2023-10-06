@@ -6,9 +6,13 @@
 #include "SpeedStepper.h"
 #include <limits.h>  // for max,min values
 #include <pfodBufferedStream.h>
+#include "TeensyDMX.h"
+namespace teensydmx = ::qindesign::teensydmx;
+teensydmx::Sender dmxTx{Serial5};
 
-
-
+float lights[2][3];
+// Data for 3 channels.
+//uint8_t data[3]{0x44, 0x88, 0xcc};
 /*
    (c)2019 Forward Computing and Control Pty. Ltd.
    NSW Australia, www.forward.com.au
@@ -29,7 +33,7 @@
 
 // ========== SETTINS FOR MOTOR STUFF ========
 #define LIM_SWITCH_TOP_PIN1 5
-#define LIM_SWITCH_TOP_PIN2 9
+#define LIM_SWITCH_TOP_PIN2 6
 #define LIM_SWITCH_BOT_PIN1 7
 #define LIM_SWITCH_BOT_PIN2 8
 
@@ -81,6 +85,13 @@ void setup() {
   pinMode(DIST_POT, INPUT);
   Serial.begin(9600);
   Serial.println("hello");
+
+  
+
+  dmxTx.begin();
+
+
+
   usbMIDI.setHandleNoteOn(myNoteOn);
   usbMIDI.setHandleControlChange(OnControlChange);
   attachInterrupt(digitalPinToInterrupt(OPEN_BUTTON), openPressed, FALLING);
@@ -177,14 +188,62 @@ void setup() {
   //stepperBot.stop();
   stepperTop.stop();
   digitalWrite(13, LOW);
+  
+  //set up the DMX lighting control pin
 
+  //dmxTx.set(4, 255);
+  //dmxTx.set(8, 255);
+
+  
+  //limit switch interrupts
   attachInterrupt(digitalPinToInterrupt(LIM_SWITCH_TOP_PIN2), topOpenLimitHit, FALLING);
   attachInterrupt(digitalPinToInterrupt(LIM_SWITCH_TOP_PIN1), topClosedLimitHit, FALLING);
   attachInterrupt(digitalPinToInterrupt(LIM_SWITCH_BOT_PIN2), bottomOpenLimitHit, FALLING);
   attachInterrupt(digitalPinToInterrupt(LIM_SWITCH_BOT_PIN1), bottomClosedLimitHit, FALLING);
 }
 
+void newDMXmessage(uint8_t light, float H, float S, float V)
+{
+    uint8_t redTemp = 0;
+    uint8_t greenTemp = 0;
+    uint8_t blueTemp = 0;
+    HsvToRgb(H, S, V, redTemp, greenTemp, blueTemp);
+    
+    dmxTx.set(light * 8 + 1, redTemp);
+    dmxTx.set(light * 8 + 2, greenTemp);
+    dmxTx.set(light * 8 + 3, blueTemp);
+}
 
+void  HsvToRgb(double hue, double saturation, double value, uint8_t& red, uint8_t& green, uint8_t& blue)
+{
+  double r, g, b;
+
+  auto i = static_cast<int>(hue * 6);
+  auto f = hue * 6 - i;
+  auto p = value * (1 - saturation);
+  auto q = value * (1 - f * saturation);
+  auto t = value * (1 - (1 - f) * saturation);
+
+  switch (i % 6)
+  {
+  case 0: r = value , g = t , b = p;
+    break;
+  case 1: r = q , g = value , b = p;
+    break;
+  case 2: r = p , g = value , b = t;
+    break;
+  case 3: r = p , g = q , b = value;
+    break;
+  case 4: r = t , g = p , b = value;
+    break;
+  case 5: r = value , g = p , b = q;
+    break;
+  }
+
+  red = static_cast<uint8_t>(r * 255);
+  green = static_cast<uint8_t>(g * 255);
+  blue = static_cast<uint8_t>(b * 255);
+}
 
 void loop() {
   stepperTop.run();
@@ -381,7 +440,7 @@ void OnControlChange(byte channel, byte control, byte value)
     scaledValue = ((float)value * ((float)calibratedRange2 / 127.0f)) + bottomminuslimit;
     Serial.println("bottomminuslimit");
     Serial.println(bottomminuslimit);
-        Serial.println("bottompluslimit"); 
+    Serial.println("bottompluslimit"); 
     Serial.println(bottompluslimit);
     Serial.println("bottomscaledvalue");
     Serial.println(scaledValue);
@@ -402,6 +461,36 @@ void OnControlChange(byte channel, byte control, byte value)
 
     }
   }
+
+  if ((control  >= 16)  && (control < 32))
+  {
+    uint8_t HorSorV = (control - 16) % 3;
+    uint8_t whichLight = (control - 16) / 3;
+    Serial.println(whichLight);
+    Serial.println(HorSorV);
+    lights[whichLight][HorSorV] = value/127.0f;
+    
+    newDMXmessage(whichLight, lights[whichLight][0], lights[whichLight][1], lights[whichLight][2]);
+
+  }
+
+  if (control == 32)
+  {
+    dmxTx.set(5, value * 2);
+  }
+  if (control == 33)
+  {
+    dmxTx.set(6, value * 2);
+  }  
+  if (control == 34)
+  {
+    dmxTx.set(7, value * 2);
+  }  
+  if (control == 35)
+  {
+    dmxTx.set(8, value * 2);
+  }
+
 }
 
 void topOpenLimitHit(void)

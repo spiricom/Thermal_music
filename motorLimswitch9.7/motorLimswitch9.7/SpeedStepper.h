@@ -361,6 +361,7 @@ private:
   boolean goingHome; // set to true when returning to home, 0 position
 
   boolean dir; // dir true forward, false reverse
+  boolean currentPulseState;
   // change setDir() method  to get stepper to go in required direction for forward
   const uint32_t minPulseWidth;
 

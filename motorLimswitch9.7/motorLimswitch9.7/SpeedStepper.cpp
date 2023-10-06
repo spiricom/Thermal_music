@@ -1,6 +1,6 @@
 // SpeedStepper.cpp
 #include "SpeedStepper.h"
-
+#include "DmxSimple.h"
 /*
    Modification (c)2019 Forward Computing and Control Pty. Ltd.
    NSW Australia, www.forward.com.au
@@ -1071,4 +1071,3 @@ void SpeedStepper::stopProfile() {
 bool SpeedStepper::isProfileRunning() {
   return runningProfile;
 }
-
