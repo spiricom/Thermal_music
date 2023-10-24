@@ -335,14 +335,25 @@ void midiOpen(int value)
 {
   if (value != 0)
   {
+<<<<<<< HEAD
     int scaledValue = (127.0f - (float)value) * ((float)calibratedRange1 / 127.0f) + (float)topminuslimit;
+=======
+    int scaledValue = (127.0f - value) * ((float)calibratedRange1 / 127.0f) + topminuslimit;
+    Serial.println("top");
+>>>>>>> 9ceb6fdc711cace4398afd5350b04b0c45f09ea9
     Serial.println(scaledValue);
     if ((scaledValue >= topminuslimit) && (scaledValue <= toppluslimit))
     {
       stepperTop.setMinusLimit(scaledValue);
       stepperTop.setPlusLimit(toppluslimit);
     }
+<<<<<<< HEAD
     scaledValue = (float)value * ((float)calibratedRange2 / 127.0f) + (float)bottomminuslimit;
+=======
+    scaledValue = value * ((float)calibratedRange2 / 127.0f) + bottomminuslimit;
+    Serial.println("bottom");
+    Serial.println(scaledValue);
+>>>>>>> 9ceb6fdc711cace4398afd5350b04b0c45f09ea9
     if ((scaledValue >= bottomminuslimit) && (scaledValue <= bottompluslimit))
     {
       stepperBot.setPlusLimit(scaledValue);
