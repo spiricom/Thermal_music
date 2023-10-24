@@ -350,6 +350,7 @@ private:
     
   const int32_t LARGE_N = 1000000000;
   uint32_t start_us;
+  bool highOrLow;
 
   boolean dirPinInverted;
   Print* debugPtr;

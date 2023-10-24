@@ -56,14 +56,23 @@ const int DIR_PIN = 2;
 const int STEP_PIN2 = 3;
 const int DIR_PIN2 = 4;
 
+uint16_t counter = 0;
+
 SpeedStepper stepperTop(STEP_PIN, DIR_PIN);
 SpeedStepper stepperBot(STEP_PIN2, DIR_PIN2);
 
+
+uint8_t addressMap[4] = {0, 1, 3, 2};
+int addressPin0 = 20;
+int addressPin1 = 21;
+uint8_t myAddress = 0;
 
 int32_t toppluslimit = 0;
 int32_t topminuslimit = 0;
 int32_t bottompluslimit = 0;
 int32_t bottomminuslimit = 0;
+
+int32_t closeOffset = 2;
 
 int distVal1 = 0;
 int distVal2 = 0;
@@ -72,6 +81,13 @@ float speedVal = 50.f;
 //const int limit_switches[4] = {/*topMotorlim1, bottomMotorlim1, topMotorlim2,  bottomMotorlim2*/0,1,2,0};
 void setup() {
 
+
+  pinMode(addressPin0, INPUT_PULLUP);
+  pinMode(addressPin1, INPUT_PULLUP);
+  delay(500);
+  myAddress = digitalRead(addressPin0) + (digitalRead(addressPin1) << 1);
+  pinMode(addressPin0, OUTPUT);
+  pinMode(addressPin1, OUTPUT);
 
   pinMode(LIM_SWITCH_TOP_PIN1, INPUT_PULLUP);
   pinMode(LIM_SWITCH_TOP_PIN2, INPUT_PULLUP);
@@ -85,7 +101,8 @@ void setup() {
   pinMode(DIST_POT, INPUT);
   Serial.begin(9600);
   Serial.println("hello");
-
+  Serial.print("myAddress = ");
+  Serial.println(myAddress);
   
 
   dmxTx.begin();
@@ -105,7 +122,16 @@ void setup() {
   stepperTop.setSpeed(-initSpeed);
   stepperBot.setSpeed(-initSpeed);
 
-    
+  /*
+  while(1)
+  {
+    Serial.println("top close top open bottom open bottom close");
+    Serial.println(digitalRead(LIM_SWITCH_TOP_PIN1));
+    Serial.println(digitalRead(LIM_SWITCH_TOP_PIN2));
+    Serial.println(digitalRead(LIM_SWITCH_BOT_PIN1));
+    Serial.println(digitalRead(LIM_SWITCH_BOT_PIN2));
+  }
+   */ 
   while (findLimit == 0)
   {
     stepperTop.run();
@@ -113,6 +139,8 @@ void setup() {
     //Serial.println(findLimit);
     int buttonPressed = digitalRead(LIM_SWITCH_TOP_PIN2);
     //Serial.println(buttonPressed);
+    
+   
     if (buttonPressed == 0)
     {
       stepperTop.stopAndSetHome();
@@ -128,11 +156,15 @@ void setup() {
   {
     //stepperTop.run();
     stepperBot.run();
+   
     if (digitalRead(LIM_SWITCH_BOT_PIN1) == 0)
     {
       stepperBot.stopAndSetHome();
-      stepperBot.setMinusLimit(stepperBot.getCurrentPosition());
+      Serial.println(stepperBot.getCurrentPosition());
+      stepperBot.setMinusLimit(stepperBot.getCurrentPosition()+closeOffset);
       Serial.println("lim switch bottom close");
+
+      Serial.println(stepperBot.getMinusLimit());
       findLimit++;
 
     }
@@ -146,13 +178,15 @@ void setup() {
   while (findLimit ==0)
   {
     stepperTop.run();  
+   
     if (digitalRead(LIM_SWITCH_TOP_PIN1) == 0)
     {
       Serial.println("lim switch top close");
-      stepperTop.setPlusLimit(stepperTop.getCurrentPosition());
+      stepperTop.setPlusLimit(stepperTop.getCurrentPosition()-closeOffset);
+      Serial.println(stepperTop.getCurrentPosition());
       Serial.println(stepperTop.getPlusLimit());
-      scaledPlusLimit = stepperTop.getCurrentPosition() * 1024;
-      midiScaledPlusLimit = stepperTop.getCurrentPosition() * 127;
+      scaledPlusLimit = (stepperTop.getCurrentPosition()) * 1024;
+      midiScaledPlusLimit = (stepperTop.getCurrentPosition()) * 127;
       findLimit++;
     }
   }
@@ -162,6 +196,7 @@ void setup() {
   {
     //stepperTop.run();
     stepperBot.run();
+ 
     if (digitalRead(LIM_SWITCH_BOT_PIN2) == 0)
     {
      Serial.println(stepperBot.getCurrentPosition());
@@ -300,14 +335,14 @@ void midiOpen(int value)
 {
   if (value != 0)
   {
-    int scaledValue = (127.0f - value) * (calibratedRange1 / 127.0f) + topminuslimit;
+    int scaledValue = (127.0f - (float)value) * ((float)calibratedRange1 / 127.0f) + (float)topminuslimit;
     Serial.println(scaledValue);
     if ((scaledValue >= topminuslimit) && (scaledValue <= toppluslimit))
     {
       stepperTop.setMinusLimit(scaledValue);
       stepperTop.setPlusLimit(toppluslimit);
     }
-    scaledValue = value * (calibratedRange2 / 127.0f) + bottomminuslimit;
+    scaledValue = (float)value * ((float)calibratedRange2 / 127.0f) + (float)bottomminuslimit;
     if ((scaledValue >= bottomminuslimit) && (scaledValue <= bottompluslimit))
     {
       stepperBot.setPlusLimit(scaledValue);
@@ -331,6 +366,12 @@ void midiClose(int velocity)
 
 void myNoteOn(byte channel, byte note, byte velocity)
 {
+  //Serial.println(channel);
+  //Serial.println(addressMap[myAddress]);
+  //if (channel != addressMap[myAddress])
+  {
+  //  return;
+  }
   if (note == 60)
   {
     midiOpen(velocity);
@@ -344,6 +385,10 @@ void myNoteOn(byte channel, byte note, byte velocity)
 
 void OnControlChange(byte channel, byte control, byte value)
 {
+  //if (channel != addressMap[myAddress])
+  {
+  //  return;
+  }
   if (control == 7 ) //speed
   {
     speedVal = 8.f * value;
