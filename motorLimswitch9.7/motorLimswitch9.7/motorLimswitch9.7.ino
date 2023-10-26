@@ -122,16 +122,16 @@ void setup() {
   stepperTop.setSpeed(-initSpeed);
   stepperBot.setSpeed(-initSpeed);
 
-  /*
-  while(1)
-  {
-    Serial.println("top close top open bottom open bottom close");
-    Serial.println(digitalRead(LIM_SWITCH_TOP_PIN1));
-    Serial.println(digitalRead(LIM_SWITCH_TOP_PIN2));
-    Serial.println(digitalRead(LIM_SWITCH_BOT_PIN1));
-    Serial.println(digitalRead(LIM_SWITCH_BOT_PIN2));
-  }
-   */ 
+  
+//  while(1)
+//  {
+//    Serial.println("top close top open bottom open bottom close");
+//    Serial.println(digitalRead(LIM_SWITCH_TOP_PIN1));
+//    Serial.println(digitalRead(LIM_SWITCH_TOP_PIN2));
+//    Serial.println(digitalRead(LIM_SWITCH_BOT_PIN1));
+//    Serial.println(digitalRead(LIM_SWITCH_BOT_PIN2));
+//  }
+   
   while (findLimit == 0)
   {
     stepperTop.run();
@@ -243,10 +243,10 @@ void newDMXmessage(uint8_t light, float H, float S, float V)
     uint8_t greenTemp = 0;
     uint8_t blueTemp = 0;
     HsvToRgb(H, S, V, redTemp, greenTemp, blueTemp);
-    
-    dmxTx.set(light * 8 + 1, redTemp);
-    dmxTx.set(light * 8 + 2, greenTemp);
-    dmxTx.set(light * 8 + 3, blueTemp);
+    Serial.println(light * 4 + 1);
+    dmxTx.set(light * 4 + 1, redTemp);
+    dmxTx.set(light * 4 + 2, greenTemp);
+    dmxTx.set(light * 4 + 3, blueTemp);
 }
 
 void  HsvToRgb(double hue, double saturation, double value, uint8_t& red, uint8_t& green, uint8_t& blue)
@@ -507,7 +507,7 @@ void OnControlChange(byte channel, byte control, byte value)
     }
   }
 
-  if ((control  >= 16)  && (control < 32))
+  if (control  >= 16 && control <= 34)
   {
     uint8_t HorSorV = (control - 16) % 3;
     uint8_t whichLight = (control - 16) / 3;
@@ -519,22 +519,7 @@ void OnControlChange(byte channel, byte control, byte value)
 
   }
 
-  if (control == 32)
-  {
-    dmxTx.set(5, value * 2);
-  }
-  if (control == 33)
-  {
-    dmxTx.set(6, value * 2);
-  }  
-  if (control == 34)
-  {
-    dmxTx.set(7, value * 2);
-  }  
-  if (control == 35)
-  {
-    dmxTx.set(8, value * 2);
-  }
+ 
 
 }
 
