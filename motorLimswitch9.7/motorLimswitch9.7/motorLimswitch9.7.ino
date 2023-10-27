@@ -245,10 +245,11 @@ void newDMXmessage(uint8_t light, float H, float S, float V)
     uint8_t greenTemp = 0;
     uint8_t blueTemp = 0;
     HsvToRgb(H, S, V, redTemp, greenTemp, blueTemp);
-    
-    dmxTx.set(light * 8 + 1, redTemp);
-    dmxTx.set(light * 8 + 2, greenTemp);
-    dmxTx.set(light * 8 + 3, blueTemp);
+    Serial.println("light");
+    Serial.println(light*4+1);
+    dmxTx.set(light * 4 + 1, redTemp);
+    dmxTx.set(light * 4 + 2, greenTemp);
+    dmxTx.set(light * 4 + 3, blueTemp);
 }
 
 void  HsvToRgb(double hue, double saturation, double value, uint8_t& red, uint8_t& green, uint8_t& blue)
@@ -509,7 +510,7 @@ void OnControlChange(byte channel, byte control, byte value)
     }
   }
 
-  if ((control  >= 16)  && (control < 32))
+  if ((control  >= 16)  && (control < 64))
   {
     uint8_t HorSorV = (control - 16) % 3;
     uint8_t whichLight = (control - 16) / 3;
@@ -520,24 +521,6 @@ void OnControlChange(byte channel, byte control, byte value)
     newDMXmessage(whichLight, lights[whichLight][0], lights[whichLight][1], lights[whichLight][2]);
 
   }
-
-  if (control == 32)
-  {
-    dmxTx.set(5, value * 2);
-  }
-  if (control == 33)
-  {
-    dmxTx.set(6, value * 2);
-  }  
-  if (control == 34)
-  {
-    dmxTx.set(7, value * 2);
-  }  
-  if (control == 35)
-  {
-    dmxTx.set(8, value * 2);
-  }
-
 }
 
 void topOpenLimitHit(void)
