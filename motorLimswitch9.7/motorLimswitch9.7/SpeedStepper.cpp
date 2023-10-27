@@ -42,7 +42,7 @@
    Default for dir pin is HIGH for forward
    Use InvertDirectionPin() to change this if needed
 */
-SpeedStepper::SpeedStepper(int stepPin, int dirPin) :  maxMaxSpeed(1000.0), minMaxSpeed(0.0003), minPulseWidth(2) {
+SpeedStepper::SpeedStepper(int stepPin, int dirPin) :  maxMaxSpeed(10000.0), minMaxSpeed(0.0003), minPulseWidth(2) {
   DIR_PIN = dirPin;
   STEP_PIN = stepPin;
   totalComputeTime = 0;
